@@ -1,12 +1,9 @@
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
-import java.lang.reflect.InvocationTargetException;
-import java.util.*;
-import java.util.concurrent.*;
 
 // ============================================================================
-public class GUITiroAlBlanco { // (A)
+public class GUITiroAlBlanco_modificado { // (A)
   // ============================================================================
   
   // Declaracion de constantes (para tamanyos de ventana).
@@ -47,7 +44,7 @@ public class GUITiroAlBlanco { // (A)
       System.exit( -1 );
     }
 */
-    GUITiroAlBlanco gui = new GUITiroAlBlanco(); // (B)
+    GUITiroAlBlanco_modificado gui = new GUITiroAlBlanco_modificado(); // (B)
     gui.go();
   }
   
@@ -327,10 +324,10 @@ class MiHebraCalculadoraUnDisparo extends Thread {
 
   // --------------------------------------------------------------------------
   public void run() {
-    Proyectil  p;
+    Proyectil_modificado p;
     boolean      impactado;
 
-    p = new Proyectil( d.velocidadInicial, d.anguloInicial, cnvCampoTiro );
+    p = new Proyectil_modificado( d.velocidadInicial, d.anguloInicial, cnvCampoTiro );
     impactado = false;
     while( ! impactado ) {
       // Muestra en pantalla los datos del proyectil p.
@@ -350,7 +347,7 @@ class MiHebraCalculadoraUnDisparo extends Thread {
   }
 
   // --------------------------------------------------------------------------
-  boolean determinaEstadoProyectil( Proyectil p ) {
+  boolean determinaEstadoProyectil( Proyectil_modificado p ) {
     // Devuelve cierto si el proyectil ha impactado contra el suelo o contra
     // el objetivo.
     boolean  impactado;
@@ -401,7 +398,7 @@ class MiHebraCalculadoraUnDisparo extends Thread {
 }
 
 // ============================================================================
-class CanvasCampoTiro extends Canvas {
+class CanvasCampoTiro_modificado extends Canvas {
   // ============================================================================
   
   // Declaracion de constantes.
@@ -474,20 +471,20 @@ class CanvasCampoTiro extends Canvas {
 }
 
 // ============================================================================
-class NuevoDisparo {
+class NuevoDisparo_modificado {
   // ============================================================================
   
   final double velocidadInicial, anguloInicial;
   
   // --------------------------------------------------------------------------
-  public NuevoDisparo( double velocidadInicial, double anguloInicial ) {
+  public NuevoDisparo_modificado( double velocidadInicial, double anguloInicial ) {
     this.velocidadInicial = velocidadInicial;
     this.anguloInicial  = anguloInicial;
   }
 }
 
 // ============================================================================
-class Proyectil {
+class Proyectil_modificado {
   // ============================================================================
   
   // Declaracion de constantes.
@@ -506,8 +503,8 @@ class Proyectil {
 /* =========   FIN  CODIGO A ANALIZAR EN EJERCICIO 2.c) y 5.a) ========== */
   
   // --------------------------------------------------------------------------
-  Proyectil( double velocidadInicial, double anguloInicial,
-        CanvasCampoTiro cnvCampoTiro ) {
+  Proyectil_modificado(double velocidadInicial, double anguloInicial,
+                       CanvasCampoTiro cnvCampoTiro ) {
     this.posX     = 0.0;
     this.posY     = 0.0;
     this.anguloRad  = anguloInicial * TO_RAD;

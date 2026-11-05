@@ -1,9 +1,6 @@
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
-import java.lang.reflect.InvocationTargetException;
-import java.util.*;
-import java.util.concurrent.*;
 
 // ============================================================================
 public class GUITiroAlBlanco { // (A)
@@ -304,10 +301,10 @@ public class GUITiroAlBlanco { // (A)
   
   // --------------------------------------------------------------------------
   public void creaYMueveProyectil( NuevoDisparo d ) {
-    Proyectil  p;
+    Proyectil_modificado p;
     boolean      impactado;
     
-    p = new Proyectil( d.velocidadInicial, d.anguloInicial, cnvCampoTiro );
+    p = new Proyectil_modificado( d.velocidadInicial, d.anguloInicial, cnvCampoTiro );
     impactado = false;
     while( ! impactado ) {
       // Muestra en pantalla los datos del proyectil p.
@@ -327,7 +324,7 @@ public class GUITiroAlBlanco { // (A)
   }
   
   // --------------------------------------------------------------------------
-  boolean determinaEstadoProyectil( Proyectil p ) {
+  boolean determinaEstadoProyectil( Proyectil_modificado p ) {
     // Devuelve cierto si el proyectil ha impactado contra el suelo o contra
     // el objetivo.
     boolean  impactado;
