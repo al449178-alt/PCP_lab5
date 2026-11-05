@@ -1,0 +1,698 @@
+import java.awt.*;
+import java.awt.event.*;
+import javax.swing.*;
+import java.lang.reflect.InvocationTargetException;
+import java.util.*;
+import java.util.concurrent.*;
+
+// ============================================================================
+public class GUITiroAlBlancoUnaHebraYVirtuales { // (A)
+    // ============================================================================
+
+    // Declaracion de constantes (para tamanyos de ventana).
+    static final int  maxVentanaX = 800 ;
+    static final int  maxVentanaY = 600 ;
+
+    // Declaracion de variables.
+    JFrame             jframe;
+    JPanel             jpanel;
+    CanvasCampoTiro3    cnvCampoTiro;
+    JTextField         txfInformacion;
+    JTextField         txfVelocidadInicial;
+    JTextField         txfAnguloInicial;
+    JButton            btnDispara;
+    Point              objetivo;
+    static int         numIters;
+    MiHebraCalculadora2                hebra ; // Ejercicio 4
+    LinkedBlockingQueue<NuevoDisparo3> listaD; // Ejercicio 4
+
+    // --------------------------------------------------------------------------
+    public static void main( String args[] ) {
+
+    // Comprobacion de los argumentos de entrada.
+    if( args.length != 1 ) {
+      System.out.println( "ERROR: numero de argumentos incorrecto.");
+      System.out.println( "Uso: java programa <numIters>" );
+      System.exit( -1 );
+    }
+    try {
+      numIters = Integer.parseInt( args[ 0 ] );
+      if( numIters <= 0 ) {
+        System.err.print( "Uso: [ java programa <numIters> ] donde ( numIters > 0 )" );
+        System.exit( -1 );
+      }
+    } catch( NumberFormatException ex ) {
+      numIters = -1;
+      System.out.println( "ERROR: Numeros de entrada incorrectos." );
+      System.exit( -1 );
+    }
+
+        GUITiroAlBlancoUnaHebraYVirtuales gui = new GUITiroAlBlancoUnaHebraYVirtuales(); // (B)
+        gui.go();
+    }
+
+    // --------------------------------------------------------------------------
+    public void go() {
+        SwingUtilities.invokeLater( new Runnable() {
+            public void run() {
+                generaGUI();
+            }
+        } );
+    }
+
+    // --------------------------------------------------------------------------
+    public void generaGUI() {
+
+        // Declaracion de variables locales.
+        JPanel  tablero, informacion, controles, incdec;
+        JButton btnVelInc100, btnVelDec100, btnVelInc5, btnVelDec5;
+        double  velIni, angIni;
+        Font    miFuenteP, miFuenteM, miFuenteG;
+
+        // Crea el JFrame principal.
+        jframe = new JFrame( "GUI Tiro Al Blanco " );
+        jpanel = ( JPanel ) jframe.getContentPane();
+        jpanel.setPreferredSize( new Dimension( maxVentanaX, maxVentanaY ) );
+        jpanel.setLayout( new BorderLayout() );
+
+        // Creacion del canvas para el campo de tiro.
+        cnvCampoTiro = new CanvasCampoTiro3();
+
+        // Creacion del panel de informacion (aciertos, fallos, etc.).
+        informacion = new JPanel();
+        informacion.setLayout( new FlowLayout() );
+
+        // Crea y anyade el campo de mensajes.
+        JLabel labInformacion = new JLabel( "Informacion:" );
+        miFuenteM = labInformacion.getFont().deriveFont( Font.PLAIN, 15.0F );
+        labInformacion.setFont( miFuenteM );
+        informacion.add( labInformacion );
+
+        txfInformacion = new JTextField( 45 );
+        txfInformacion.setFont( miFuenteM );
+        txfInformacion.setEditable( false );
+        txfInformacion.setHorizontalAlignment( JTextField.CENTER );
+        informacion.add( txfInformacion );
+
+        // Creacion del panel de controles de disparo.
+        controles = new JPanel();
+        controles.setLayout( new FlowLayout() );
+
+        // Crea y anyade el control de velocidad inicial.
+        JLabel labVelocidadInicial = new JLabel( "Velocidad: " );
+        miFuenteG = labVelocidadInicial.getFont().deriveFont( Font.PLAIN, 18.0F );
+        labVelocidadInicial.setFont( miFuenteG );
+        controles.add( labVelocidadInicial );
+
+        velIni = 100.0 * Math.round( 50.0 + Math.random() * 10.0 );
+        txfVelocidadInicial  = new JTextField( String.valueOf( velIni ), 7 );
+        txfVelocidadInicial.setFont( miFuenteG );
+        controles.add( txfVelocidadInicial );
+
+        // Creacion del minipanel de incrementos/decrementos.
+        incdec = new JPanel();
+        incdec.setLayout( new GridLayout( 2, 2 ) );
+
+        // Crea y anyade el boton para incrementar la velocidad en 100.
+        btnVelInc100 = new JButton( "+100" );
+        miFuenteP = btnVelInc100.getFont().deriveFont( Font.PLAIN, 10.0F );
+        btnVelInc100.setFont( miFuenteP );
+        incdec.add( btnVelInc100 );
+
+        // Anyade el codigo para procesar la pulsacion del boton "btnVelInc100".
+        btnVelInc100.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                // En las llamadas a getText/setText de objetos graficos aqui no hace
+                // falta el invokeLater dado que este codigo lo ejecuta la
+                // hebra event-dispatching.
+                double vel;
+                try {
+                    vel = Double.parseDouble( txfVelocidadInicial.getText().trim() );
+                    vel += 100.0;
+                    txfVelocidadInicial.setText( String.valueOf( vel ) );
+                } catch( NumberFormatException ex ) {
+                    txfInformacion.setText( "ERROR: Numeros incorrectos." );
+                }
+            }
+        } );
+
+        // Crea y anyade el boton para incrementar la velocidad en 5.
+        btnVelInc5 = new JButton( "+5" );
+        btnVelInc5.setFont( miFuenteP );
+        incdec.add( btnVelInc5 );
+
+        // Anyade el codigo para procesar la pulsacion del boton "btnVelInc5".
+        btnVelInc5.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                // En las llamadas a getText/setText de objetos graficos aqui no hace
+                // falta el invokeLater dado que este codigo lo ejecuta la
+                // hebra event-dispatching.
+                double vel;
+                try {
+                    vel = Double.parseDouble( txfVelocidadInicial.getText().trim() );
+                    vel += 5.0;
+                    txfVelocidadInicial.setText( String.valueOf( vel ) );
+                } catch( NumberFormatException ex ) {
+                    txfInformacion.setText( "ERROR: Numeros incorrectos." );
+                }
+            }
+        } );
+
+        // Crea y anyade el boton para decrementar la velocidad en 100.
+        btnVelDec100 = new JButton( "-100" );
+        btnVelDec100.setFont( miFuenteP );
+        incdec.add( btnVelDec100 );
+
+        // Anyade el codigo para procesar la pulsacion del boton "btnVelDec100".
+        btnVelDec100.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                // En las llamadas a getText/setText de objetos graficos aqui no hace
+                // falta el invokeLater dado que este codigo lo ejecuta la
+                // hebra event-dispatching.
+                double vel;
+                try {
+                    vel = Double.parseDouble( txfVelocidadInicial.getText().trim() );
+                    vel -= 100.0;
+                    txfVelocidadInicial.setText( String.valueOf( vel ) );
+                } catch( NumberFormatException ex ) {
+                    txfInformacion.setText( "ERROR: Numeros incorrectos." );
+                }
+            }
+        } );
+
+        // Crea y anyade el boton para decrementar la velocidad en 5.
+        btnVelDec5 = new JButton( "-5" );
+        btnVelDec5.setFont( miFuenteP );
+        incdec.add( btnVelDec5 );
+
+        // Anyade el codigo para procesar la pulsacion del boton "btnVelDec5".
+        btnVelDec5.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                // En las llamadas a getText/setText de objetos graficos aqui no hace
+                // falta el invokeLater dado que este codigo lo ejecuta la
+                // hebra event-dispatching.
+                double vel;
+                try {
+                    vel = Double.parseDouble( txfVelocidadInicial.getText().trim() );
+                    vel -= 5.0;
+                    txfVelocidadInicial.setText( String.valueOf( vel ) );
+                } catch( NumberFormatException ex ) {
+                    txfInformacion.setText( "ERROR: Numeros incorrectos." );
+                }
+            }
+        } );
+
+        // Anyade el nuevo minipanel de incrementos/decrementos al panel de control.
+        controles.add( incdec );
+
+        // Crea y anyade un cierto espacio de separacion.
+        JLabel labSeparacion1 = new JLabel( "    " );
+        labSeparacion1.setFont( miFuenteG );
+        controles.add( labSeparacion1 );
+
+        // Crea y anyade el control del angulo inicial.
+        JLabel labAnguloInicial = new JLabel( "angulo: " );
+        labAnguloInicial.setFont( miFuenteG );
+        controles.add( labAnguloInicial );
+
+        angIni = Math.round( 45.0 + Math.random() * 15.0 );
+        txfAnguloInicial = new JTextField( String.valueOf( angIni ), 5 );
+        txfAnguloInicial.setFont( miFuenteG );
+        controles.add( txfAnguloInicial );
+
+        // Crea y anyade un cierto espacio de separacion.
+        JLabel labSeparacion2 = new JLabel( "    " );
+        labSeparacion2.setFont( miFuenteG );
+        controles.add( labSeparacion2 );
+
+        // Crea y anyade el boton de disparo.
+        btnDispara = new JButton( "Dispara" );
+        btnDispara.setFont( miFuenteG );
+        controles.add( btnDispara );
+
+        //
+        // Creacion del panel de tablero que contiene los minipaneles de
+        // informacion y controles.
+        tablero = new JPanel();
+        tablero.setLayout( new BorderLayout() );
+        tablero.add( "Center", informacion );
+        tablero.add( "South", controles );
+
+        //
+        // Anyade el canvas y el tablero al panel principal.
+        jpanel.add( "Center", cnvCampoTiro );
+        jpanel.add( "South", tablero );
+
+        // Fija caracteristicas del frame.
+        jframe.setDefaultCloseOperation( JFrame.EXIT_ON_CLOSE );
+        jframe.pack();
+        jframe.setResizable( false );
+        jframe.setVisible( true );
+
+        // Inicializa la posicion del objetivo.
+        this.objetivo = generaCoordenadasDeObjetivo();
+        System.out.println( "generaGUI. Coordenadas del objetivo: " +
+                this.objetivo.x + "," + this.objetivo.y);
+        cnvCampoTiro.guardaCoordenadasObjetivo( this.objetivo );
+
+        listaD= new LinkedBlockingQueue<NuevoDisparo3>();
+        hebra= new MiHebraCalculadora2(listaD, cnvCampoTiro, txfInformacion, objetivo, numIters);
+        hebra.start();
+
+        /* ========= INICIO CODIGO A MODIFICAR EN EJERCICIO 2.a) y 2.b) ========== */
+        // Anyade el codigo para procesar la pulsacion del boton "Dispara".
+        btnDispara.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                // En las llamadas a getText/setText de objetos graficos aqui no hace
+                // falta el invokeLater dado que este codigo lo ejecuta la
+                // hebra event-dispatching.
+                double vel, ang;
+                try {
+                    vel = Double.parseDouble( txfVelocidadInicial.getText().trim() ) / 100.0;
+                    ang = Double.parseDouble( txfAnguloInicial.getText().trim() );
+                    if( ( 0.0 <= ang )&&( ang < 90 )&&( vel > 0 ) ) {
+                        txfInformacion.setText( "Calculando y dibujando trayectoria..." );
+                        try{
+                            listaD.put( new NuevoDisparo3( vel, ang ) );
+                        } catch(InterruptedException ex){
+                            ex.printStackTrace();
+                        }
+                    } else {
+                        txfInformacion.setText( "ERROR: Datos incorrectos." );
+                    }
+                } catch( NumberFormatException ex ) {
+                    txfInformacion.setText( "ERROR: Numeros incorrectos." );
+                }
+            }
+        } );
+        /* =========   FIN  CODIGO A ANALIZAR EN EJERCICIO 2.a) y 2.b) ============= */
+    }
+
+    // --------------------------------------------------------------------------
+    Point generaCoordenadasDeObjetivo() {
+        int     maxDimX, maxDimY, distanciaAlBorde, objetivoX, objetivoY;
+        double  mitadX, posicionX;
+
+        // Obten las dimensiones del canvas.
+        maxDimX = cnvCampoTiro.getWidth();
+        maxDimY = cnvCampoTiro.getHeight();
+
+        // Genera una posicion aleatoria en la segunda mitad.
+        mitadX  = ( ( double ) ( maxDimX - 1 ) ) / 2.0 ;
+        posicionX = Math.round( mitadX + Math.random() * mitadX );
+
+        // Controla que el objetivo no esta muy cerca de los bordes.
+        distanciaAlBorde = 50;
+        objetivoX = Math.max( distanciaAlBorde, Math.min( maxDimX - distanciaAlBorde, ( int ) posicionX ) );
+        objetivoY = 0;
+
+        return new Point( objetivoX, objetivoY );
+    }
+
+    // --------------------------------------------------------------------------
+    public void creaYMueveProyectil( NuevoDisparo3 d ) {
+        Proyectil3  p;
+        boolean      impactado;
+
+        p = new Proyectil3( d.velocidadInicial, d.anguloInicial, cnvCampoTiro );
+        impactado = false;
+        while( ! impactado ) {
+            // Muestra en pantalla los datos del proyectil p.
+            p.imprimeEstadoProyectilEnConsola();
+
+            // Mueve un incremental de tiempo el proyectil p.
+            p.mueveUnIncremental();
+
+            // Actualiza en pantalla la posicion del proyectil p.
+            p.actualizaDibujoDeProyectil();
+
+            // Comprueba si el proyectil p ha impactado en el suelo.
+            impactado = determinaEstadoProyectil( p );
+
+            duermeUnPoco( 2L );
+        }
+    }
+
+    // --------------------------------------------------------------------------
+    boolean determinaEstadoProyectil( Proyectil3 p ) {
+        // Devuelve cierto si el proyectil ha impactado contra el suelo o contra
+        // el objetivo.
+        boolean  impactado;
+        String   mensaje;
+
+        if ( ( p.intPosX == objetivo.x )&&( p.intPosY == objetivo.y ) ) {
+            // El proyectil ha acertado el objetivo.
+            impactado = true;
+            mensaje = " Destruido!!!";
+            muestraMensajeEnCampoInformacion( mensaje );
+
+        } else if( ( p.intPosY <= 0 )&&( p.velY < 0.0 ) ) {
+            // El proyectil ha impactado contra el suelo, pero no ha acertado.
+            impactado = true;
+            mensaje = "Has fallado. Esta en " + objetivo.x + ". " +
+                    "Has disparado a " + p.intPosX + ".";
+            muestraMensajeEnCampoInformacion( mensaje );
+        } else {
+            // El proyectil continua en vuelo.
+            impactado = false;
+        }
+        return impactado;
+    }
+
+    // --------------------------------------------------------------------------
+    void muestraMensajeEnCampoInformacion( String mensaje ) {
+        // Muestra mensaje en el cuadro de texto de informacion.
+
+        /* ========= INICIO CODIGO A ANALIZAR EN EJERCICIO 2.e) ========= */
+        final String miMensaje = mensaje;
+        // El JTextField se actualiza desde la hebra event-dispatching.
+        SwingUtilities.invokeLater( new Runnable() {
+            public void run() {
+                txfInformacion.setText( miMensaje );
+            }
+        } );
+        /* =========   FIN  CODIGO A ANALIZAR EN EJERCICIO 2.e) ========== */
+    }
+
+    // --------------------------------------------------------------------------
+    void duermeUnPoco( long millis ) {
+        try {
+            Thread.sleep( millis );
+        } catch( InterruptedException ex ) {
+            ex.printStackTrace();
+        }
+    }
+}
+
+//INICIO EJERCICIO 4 HEBRAS
+class MiHebraCalculadora2 extends Thread{
+    private LinkedBlockingQueue<NuevoDisparo3> listaD;
+    private ArrayList<Proyectil3> listaP;
+    private CanvasCampoTiro3 cnvCampoTiro;
+    private JTextField txfInformacion;
+    private Point objetivo;
+    private int numIters;
+
+    public MiHebraCalculadora2(LinkedBlockingQueue<NuevoDisparo3> listaD, CanvasCampoTiro3 cnvCampoTiro, JTextField txfInformacion, Point objetivo, int numIters){
+        this.listaD= listaD;
+        this.listaP= new ArrayList<Proyectil3>();
+        this.cnvCampoTiro=cnvCampoTiro;
+        this.txfInformacion=txfInformacion;
+        this.objetivo=objetivo;
+        this.numIters=numIters;
+    }
+
+    public void run(){
+        while(true){
+            while(!listaD.isEmpty() || listaP.isEmpty()){
+                try{
+                    NuevoDisparo3 d= listaD.take();
+                    Proyectil3 p = new Proyectil3(d.velocidadInicial, d.anguloInicial, cnvCampoTiro);
+                    listaP.add(p);
+                } catch (InterruptedException ex){
+                    ex.printStackTrace();
+                }
+            }
+
+            Thread[] hebrasVirtuales = new Thread[listaP.size()];
+            for(int i =0; i<listaP.size(); i++){
+                Proyectil3 p= listaP.get(i);
+                hebrasVirtuales[i]=Thread.ofVirtual().start(new MiHebraVirtual(p, numIters, cnvCampoTiro, txfInformacion, objetivo));
+            }
+            for (Thread h: hebrasVirtuales){
+                try{
+                    h.join();
+                } catch (InterruptedException ex){
+                    ex.printStackTrace();
+                }
+            }
+            for (int i = listaP.size()-1; i>=0; i--) {
+                Proyectil3 p = listaP.get(i);
+                if (determinaEstadoProyectil(p)) {
+                    listaP.remove(i);
+                }
+            }
+        }
+    }
+    boolean determinaEstadoProyectil(Proyectil3 p){
+        boolean impactado;
+        String mensaje;
+
+        if ( ( p.intPosX == objetivo.x )&&( p.intPosY == objetivo.y ) ) {
+            impactado = true;
+            mensaje = " Destruido!!!";
+            muestraMensajeEnCampoInformacion( mensaje );
+        } else if( ( p.intPosY <= 0 )&&( p.velY < 0.0 ) ) {
+            impactado = true;
+            mensaje = "Has fallado. Esta en " + objetivo.x + ". " + "Has disparado a " + p.intPosX + ".";
+            muestraMensajeEnCampoInformacion( mensaje );
+        } else {
+            impactado = false;
+        }
+        return impactado;
+    }
+    void muestraMensajeEnCampoInformacion( String mensaje ) {
+        final String miMensaje = mensaje;
+        SwingUtilities.invokeLater( new Runnable() {
+            public void run() {
+                txfInformacion.setText( miMensaje );
+            }
+        } );
+    }
+
+    void duermeUnPoco( long millis ) {
+        try {
+            Thread.sleep( millis );
+        } catch( InterruptedException ex ) {
+            ex.printStackTrace();
+        }
+    }
+}
+
+class MiHebraVirtual implements Runnable{
+    private Proyectil3 p;
+    private int numIters;
+    private CanvasCampoTiro3 cnvCampoTiro;
+    private JTextField txfInformacion;
+    private Point objetivo;
+
+    public MiHebraVirtual(Proyectil3 p, int numIters, CanvasCampoTiro3 cnvCampoTiro, JTextField txfInformacion, Point objetivo ){
+        this.p = p;
+        this.numIters = numIters;
+        this.cnvCampoTiro = cnvCampoTiro;
+        this.txfInformacion = txfInformacion;
+        this.objetivo = objetivo;
+    }
+
+    @Override
+    public void run() {
+        for (int i = 0; i < numIters; i++) {
+            p.imprimeEstadoProyectilEnConsola();
+            p.mueveUnIncremental();
+            p.actualizaDibujoDeProyectil();
+
+            if (determinaEstadoProyectil(p)) {
+                break;
+            }
+            duermeUnPoco(2L);
+        }
+    }
+
+    boolean determinaEstadoProyectil(Proyectil3 p) {
+        boolean impactado;
+        String mensaje;
+
+        if ((p.intPosX == objetivo.x) && (p.intPosY == objetivo.y)) {
+            impactado = true;
+            mensaje = " Destruido!!!";
+            muestraMensajeEnCampoInformacion(mensaje);
+        } else if ((p.intPosY <= 0) && (p.velY < 0.0)) {
+            impactado = true;
+            mensaje = "Has fallado. Esta en " + objetivo.x + ". Has disparado a " + p.intPosX + ".";
+            muestraMensajeEnCampoInformacion(mensaje);
+        } else {
+            impactado = false;
+        }
+        return impactado;
+    }
+
+    void muestraMensajeEnCampoInformacion(String mensaje) {
+        final String miMensaje = mensaje;
+        SwingUtilities.invokeLater( new Runnable() {
+            public void run() {
+                txfInformacion.setText( miMensaje );
+            }
+        } );
+    }
+
+    void duermeUnPoco(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException ex) {
+            ex.printStackTrace();
+        }
+    }
+
+}
+// ============================================================================
+class CanvasCampoTiro3 extends Canvas {
+    // ============================================================================
+
+    // Declaracion de constantes.
+    static final int  tamProyectil  = 5;
+    static final int  tamObjetivoX  = 20;
+    static final int  tamObjetivoY  = 30;
+    static final int  tamCanyonX  = 40;
+    static final int  tamCanyonY  = 40;
+
+    // Declaracion de variables.
+    int objetivoX, objetivoY;
+
+    // --------------------------------------------------------------------------
+    public void paint( Graphics g ) {
+
+        // Fija el color de fondo.
+        this.setBackground( Color.gray );
+
+        // Dibuja el borde.
+        g.setColor( Color.black );
+        g.drawRect( 0, 0, this.getWidth() - 1, this.getHeight() - 1 );
+
+        // Dibuja el canyon y el objetivo.
+        dibujaCanyon( 0, 0 );
+        dibujaObjetivo( objetivoX, objetivoY );
+    }
+
+    // --------------------------------------------------------------------------
+    public void dibujaProyectil( int x, int y, int xOld, int yOld ) {
+        Graphics g = this.getGraphics();
+        // Borra posicion anterior.
+        g.setColor( Color.white );
+        g.fillOval( coorX( xOld ), coorY( yOld ), tamProyectil, tamProyectil );
+        // Dibuja posicion nueva.
+        g.setColor( Color.red );
+        g.fillOval( coorX( x ), coorY( y ), tamProyectil, tamProyectil );
+    }
+
+    // --------------------------------------------------------------------------
+    public void dibujaCanyon( int x, int y ) {
+        Graphics g = this.getGraphics();
+        g.setColor( Color.green );
+        g.fillOval( coorX( x ) - tamCanyonX / 2, coorY( y ) - tamCanyonY / 2,
+                tamCanyonX, tamCanyonY );
+    }
+
+    // --------------------------------------------------------------------------
+    public void dibujaObjetivo( int x, int y ) {
+        Graphics g = this.getGraphics();
+        g.setColor( Color.yellow );
+        g.fillRect( coorX( x ) - tamObjetivoX / 2, coorY( y ) - tamObjetivoY / 2,
+                tamObjetivoX, tamObjetivoY );
+    }
+
+    // --------------------------------------------------------------------------
+    int coorX( int x ) {
+        return x;
+    }
+
+    // --------------------------------------------------------------------------
+    int coorY( int y ) {
+        return ( this.getHeight() - 1 - y );
+    }
+
+    // --------------------------------------------------------------------------
+    void guardaCoordenadasObjetivo( Point objetivo ) {
+        this.objetivoX = objetivo.x;
+        this.objetivoY = objetivo.y;
+    }
+}
+
+// ============================================================================
+class NuevoDisparo3 {
+    // ============================================================================
+
+    final double velocidadInicial, anguloInicial;
+
+    // --------------------------------------------------------------------------
+    public NuevoDisparo3( double velocidadInicial, double anguloInicial ) {
+        this.velocidadInicial = velocidadInicial;
+        this.anguloInicial  = anguloInicial;
+    }
+}
+
+// ============================================================================
+class Proyectil3 {
+    // ============================================================================
+
+    // Declaracion de constantes.
+    static final double  GRAVITY = 9.8;
+    static final double  TO_RAD  = ( 2.0 * Math.PI ) / 360.0;
+    static final double  DELTA_T = 5.0E-3;
+
+    // Declaracion de variables.
+    CanvasCampoTiro3 cnvCampoTiro;
+    /* ========= INICIO CODIGO A ANALIZAR EN EJERCICIO 2.c) y 5.a) ========= */
+    // Posiciones, angulo y velocidades con precision doble.
+    double      posX, posY;
+    double      anguloRad, velX, velY;
+    // Posiciones exactas enteras.
+    int         intPosX, intPosY, intPosXOld, intPosYOld;
+    /* =========   FIN  CODIGO A ANALIZAR EN EJERCICIO 2.c) y 5.a) ========== */
+
+    // --------------------------------------------------------------------------
+    Proyectil3( double velocidadInicial, double anguloInicial,
+                CanvasCampoTiro3 cnvCampoTiro ) {
+        this.posX     = 0.0;
+        this.posY     = 0.0;
+        this.anguloRad  = anguloInicial * TO_RAD;
+        this.velX     = Math.cos( anguloRad ) * velocidadInicial;
+        this.velY     = Math.sin( anguloRad ) * velocidadInicial;
+        this.cnvCampoTiro = cnvCampoTiro;
+    }
+
+    // --------------------------------------------------------------------------
+    void mueveUnIncremental() {
+        // Actualiza la posicion y la velocidad.
+        this.posX += this.velX * DELTA_T;
+        this.posY += this.velY * DELTA_T;
+        //// this.velX = this.velX;  Esta velocidad no cambia.
+        this.velY -= GRAVITY * DELTA_T;
+
+        // Guarda la anterior posicion entera.
+        this.intPosXOld = intPosX;
+        this.intPosYOld = intPosY;
+
+        // Calcula la nueva posicion entera.
+        this.intPosX = ( int ) posX;
+        this.intPosY = ( int ) posY;
+    }
+
+    // --------------------------------------------------------------------------
+    void imprimeEstadoProyectilEnConsola() {
+        System.out.format( "  Pos:( %6.2f %6.2f )" +
+                        " Vel:( %6.2f %6.2f )" + " IntPos:( %4d %4d )%n",
+                this.posX, this.posY,
+                this.velX, this.velY, this.intPosX, this.intPosY );
+    }
+
+    // --------------------------------------------------------------------------
+    public void actualizaDibujoDeProyectil() {
+        // Dibuja la nueva posicion del proyectil solo si la nueva posicion es
+        // distinta de la anterior.
+        if( ( this.intPosX != this.intPosXOld )||
+                ( this.intPosY != this.intPosYOld ) ) {
+            /* ========= INICIO CODIGO A ANALIZAR EN EJERCICIO 2.d) ========= */
+            final int x = intPosX;
+            final int y = intPosY;
+            final int xOld = intPosXOld;
+            final int yOld = intPosYOld;
+            SwingUtilities.invokeLater( new Runnable() {
+                public void run() {
+                    cnvCampoTiro.dibujaProyectil( x, y, xOld, yOld );
+                }
+            } );
+            /* =========   FIN  CODIGO A ANALIZAR EN EJERCICIO 2.d) ========== */
+        }
+    }
+}
+

@@ -416,8 +416,8 @@ class MiHebraCalculadora extends Thread{
                 if (determinaEstadoProyectil(p)){
                     listaP.remove(i);
                 }
+                duermeUnPoco(2L);
             }
-            duermeUnPoco(2L);
         }
     }
     boolean determinaEstadoProyectil(Proyectil2 p){

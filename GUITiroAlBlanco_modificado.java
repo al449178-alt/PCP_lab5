@@ -380,6 +380,15 @@ class MiHebraCalculadoraUnDisparo extends Thread {
     final String miMensaje = mensaje;
     // El JTextField se actualiza desde la hebra event-dispatching.
     SwingUtilities.invokeLater( new Runnable() {
+
+
+
+
+
+
+
+
+
       public void run() {
         txfInformacion.setText( miMensaje );
       }
